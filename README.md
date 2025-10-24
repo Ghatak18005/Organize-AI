@@ -26,6 +26,17 @@ The asynchronous architecture ensures scalability and responsiveness — ideal f
 | **Metadata Sorting** | Python Pillow (EXIF) | Extracts EXIF metadata (e.g., camera model, creation date) to classify image files without AI. |
 | **Smart Conflict Resolution** | Python `hashlib` (SHA-256) | Detects and removes exact duplicates by hashing file content, conserving storage. |
 
+## 🧰 Tech Stack
+
+| **Layer** | **Technology** | **Description** |
+|------------|----------------|-----------------|
+| Backend Framework | FastAPI | High-performance async web framework for the backend. |
+| Async Task Handling | FastAPI BackgroundTasks | Enables non-blocking file processing using background workers. |
+| AI Integration | Gemini API | Provides intelligent, semantic file classification using LLMs. |
+| Auth Layer | Mock Google OAuth2 | Demonstrates secure login and token handling flow. |
+| File & Metadata Processing | Pillow, hashlib | Extracts metadata (EXIF) and performs duplicate detection via hashing. |
+| Frontend | HTML, TailwindCSS, JavaScript | Simple, responsive dashboard for file management and logs. |
+
 ---
 
 ## 🧩 Local Setup & Running
@@ -133,20 +144,6 @@ Rules are executed before AI classification for zero-latency sorting.
 ↩ Undo Command — Implement /undo endpoint using a transaction log to reverse the last N file operations.
 
 📈 WebSocket Logs — Replace polling with real-time WebSocket streaming for better scalability.
-
-## 🧰 Tech Stack
-
-| **Layer** | **Technology** | **Description** |
-|------------|----------------|-----------------|
-| Backend Framework | FastAPI | High-performance async web framework for the backend. |
-| Async Task Handling | FastAPI BackgroundTasks | Enables non-blocking file processing using background workers. |
-| AI Integration | Gemini API | Provides intelligent, semantic file classification using LLMs. |
-| Auth Layer | Mock Google OAuth2 | Demonstrates secure login and token handling flow. |
-| File & Metadata Processing | Pillow, hashlib | Extracts metadata (EXIF) and performs duplicate detection via hashing. |
-| Frontend | HTML, TailwindCSS, JavaScript | Simple, responsive dashboard for file management and logs. |
-
-
-
 
 **🧾 License**
 This project is licensed under the MIT License — feel free to use, modify, and build upon it.
