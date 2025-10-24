@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI File Organizer Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        /*
+         * FIX STRATEGY: 
+         * 1. body: min-height: 100vh; display: flex; flex-direction: column;
+         * 2. Main content container (all viewports, including dashboard): flex-grow
+         * 3. footer: mt-auto (margin-top: auto)
+         */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+            /* Flexbox setup for stick-to-bottom footer */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Custom Theme Colors */
+        .bg-teal-main { background-color: #0d9488; } /* deep teal */
+        .hover\:bg-teal-dark:hover { background-color: #0f766e; } /* darker teal */
+        .text-teal-accent { color: #14b8a6; } /* bright cyan/teal accent */
+
+        /* Pulsing Animation for Hero CTA (Keeping this) */
+        @keyframes pulse-once {
+            0% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(20, 184, 166, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0); }
+        }
+        .cta-pulse {
+            animation: pulse-once 1.5s infinite;
+        }
+        
+        /* 🚨 PREMIUM ENHANCEMENT: Feature Card Hover */
+        .feature-card { 
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border-radius: 1rem;
+            border: 1px solid transparent; 
+        }
+        .feature-card:hover {
+            transform: translateY(-5px); 
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1), 0 0 30px rgba(20, 184, 166, 0.2); 
+            border-color: #14b8a6; 
+        }
+        
+        /* 🚨 HERO ICON ANIMATION (Kept) */
+        @keyframes icon-tilt {
+            0%, 100% { transform: translateY(0px) rotateX(0deg); }
+            50% { transform: translateY(-3px) rotateX(3deg); }
+        }
+        .hero-icon-animate {
+            animation: icon-tilt 6s ease-in-out infinite;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+
+        /* 🚨 NEW: Structured Pipeline Layout */
+        .pipeline-step { position: relative; }
+        @media (min-width: 768px) {
+            .pipeline-connector-right {
+                position: absolute;
+                top: 50%;
+                right: -40px; 
+                transform: translateY(-50%);
+                width: 40px;
+                height: 2px;
+                background-color: #38bdf8; 
+            }
+        }
+        .md\:flex > .hidden:nth-child(2), .md\:flex > .hidden:nth-child(4) { display: none; }
+
+
+        /* --- Floating File Animation Background (Unchanged) --- */
+        @keyframes floating {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0.6; border-radius: 60% 40% 30% 70%; }
+            50% { transform: translateY(-20px) rotate(15deg); opacity: 0.3; border-radius: 40% 60% 70% 30%; }
+            100% { transform: translateY(0) rotate(0deg); opacity: 0.6; border-radius: 60% 40% 30% 70%; }
+        }
+
+        .file-background-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0; 
+            pointer-events: none;
+            /* New Background Gradient for Premium Feel */
+            background: radial-gradient(circle at 10% 20%, #eff6ff, #f7f9fb 80%); 
+        }
+
+        .floating-file {
+            position: absolute;
+            display: block;
+            width: 40px;
+            height: 60px;
+            background: rgba(20, 184, 166, 0.1); 
+            box-shadow: 0 0 15px rgba(20, 184, 166, 0.4);
+            animation: floating 25s linear infinite;
+        }
+        /* Defining individual animation properties for unique look */
+        .floating-file:nth-child(1) { top: 10%; left: 5%; animation-duration: 25s; }
+        .floating-file:nth-child(2) { top: 30%; left: 80%; width: 50px; height: 70px; animation-duration: 18s; animation-delay: 2s; opacity: 0.4; }
+        .floating-file:nth-child(3) { top: 60%; left: 30%; width: 30px; height: 45px; animation-duration: 35s; animation-delay: 0s; opacity: 0.7; }
+        .floating-file:nth-child(4) { top: 80%; left: 50%; width: 60px; height: 90px; animation-duration: 20s; animation-delay: 5s; opacity: 0.5; }
+        .floating-file:nth-child(5) { top: 40%; left: 15%; width: 45px; height: 65px; animation-duration: 30s; animation-delay: 10s; opacity: 0.3; }
+        .floating-file:nth-child(6) { top: 70%; left: 95%; width: 35px; height: 50px; animation-duration: 15s; animation-delay: 7s; opacity: 0.6; }
+        .floating-file:nth-child(7) { top: 10%; left: 60%; width: 25px; height: 35px; animation-duration: 40s; animation-delay: 15s; opacity: 0.4; }
+
+        /* Log Viewer styles (Unchanged) */
+        .log-viewer::-webkit-scrollbar { width: 6px; }
+        .log-viewer::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 3px; }
+        .log-viewer::-webkit-scrollbar-track { background-color: #f3f4f6; }
+        .log-viewer .text-log-green { color: #10b981; }
+        .log-viewer .text-primary-blue { color: #0d9488; } 
+        .log-viewer .text-log-orange { color: #f59e0b; }
+        .user-welcome-text { font-size: 1.125rem; }
+
+        /* 🚨 NEW: Testimonial styles for clean separation */
+        .testimonial-card {
+            background-color: #fff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+        .testimonial-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#0d9488', /* Deep Teal - New Primary */
+                        'teal-accent': '#14b8a6', /* Bright Cyan - New Accent */
+                        'secondary-gray': '#f3f4f6',
+                        'log-green': '#10b981',
+                        'log-orange': '#f59e0b',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header id="main-header" class="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-lg">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center text-primary-blue">
+                <i data-lucide="brain-circuit" class="w-7 h-7 mr-3 drop-shadow-sm"></i>
+                <span class="text-2xl font-black tracking-tight">Organize.AI</span>
+            </div>
+
+            <div id="auth-nav-link" class="flex items-center space-x-4">
+                <a href="#features" class="text-gray-600 hover:text-teal-accent text-sm font-medium transition duration-150 hidden md:block">Features</a>
+                <a href="#how-it-works" class="text-gray-600 hover:text-teal-accent text-sm font-medium transition duration-150 hidden md:block">Pipeline</a>
+                <button id="google-login-button-nav" class="flex items-center px-5 py-2 bg-teal-accent rounded-full shadow-lg text-sm font-semibold text-white hover:bg-teal-dark transition duration-300 ease-in-out transform hover:scale-105">
+                    <svg class="w-4 h-4 mr-2" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M24 9.5c3.3 0 5.8 1.4 7.4 2.9l5.1-5.1c-3.1-2.9-7.1-4.7-12.5-4.7C13.2 2.6 4.6 11.2 4.6 24s8.6 21.4 19.4 21.4c6.3 0 11.6-2.5 15.1-6.1l-4.2-3.3c-2.3 2.1-5.2 3.5-9 3.5-7.7 0-14.1-6.1-14.1-13.5s6.4-13.5 14.1-13.5z" fill="#4285F4"/><path d="M24 45.4c6.3 0 11.6-2.5 15.1-6.1l-4.2-3.3c-2.3 2.1-5.2 3.5-9 3.5-7.7 0-14.1-6.1-14.1-13.5s6.4-13.5 14.1-13.5c4.7 0 8.2 1.9 10.8 4.4l3.8-3.6c-3.7-3.6-8.7-5.8-14.6-5.8C13.2 2.6 4.6 11.2 4.6 24s8.6 21.4 19.4 21.4z" fill="#34A853"/><path d="M43.1 24c0-1.7-.1-3.2-.4-4.8H24v9.1h10.9c-.4 2.1-1.4 4.1-3.1 5.7l5.1 5.1c3.1-2.9 5-6.7 5-13.1z" fill="#FBBC04"/><path d="M24 45.4c6.3 0 11.6-2.5 15.1-6.1l-4.2-3.3c-2.3 2.1-5.2 3.5-9 3.5-7.7 0-14.1-6.1-14.1-13.5s6.4-13.5 14.1-13.5c4.7 0 8.2 1.9 10.8 4.4l3.8-3.6c-3.7-3.6-8.7-5.8-14.6-5.8C13.2 2.6 4.6 11.2 4.6 24s8.6 21.4 19.4 21.4z" fill="#EA4335"/></svg>
+                    Start for Free
+                </button>
+            </div>
+            
+            <div id="user-info-nav" class="hidden flex items-center space-x-4">
+                <p id="user-display-nav" class="user-welcome-text text-gray-800 font-semibold"></p>
+                <button id="logout-button-nav" class="flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 transition duration-150 ease-in-out">
+                    <i data-lucide="log-out" class="w-4 h-4 mr-2"></i> Logout
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div id="auth-container" class="relative flex-grow flex flex-col items-center">
+        
+        <div class="file-background-container">
+            <div class="floating-file"></div>
+            <div class="floating-file"></div>
+            <div class="floating-file"></div>
+            <div class="floating-file"></div>
+            <div class="floating-file"></div>
+            <div class="floating-file"></div>
+            <div class="floating-file"></div>
+        </div>
+
+        <section class="py-24 md:py-32 container mx-auto px-6 text-center max-w-6xl relative z-10 bg-transparent">
+             <i data-lucide="folder-check" class="w-16 h-16 mx-auto mb-6 text-teal-accent hero-icon-animate drop-shadow-lg"></i>
+             <h1 class="text-6xl md:text-7xl font-extrabold text-gray-900 mb-6 tracking-tighter leading-tight">
+                 Organize Your Digital Life with <span class="text-primary-blue drop-shadow-md">Intelligent Automation</span>
+             </h1>
+             <p class="text-xl text-gray-600 mb-10 max-w-3xl mx-auto">
+                 Our service uses **Gemini AI** to analyze file content, apply custom rules, and perpetually manage your file system, so you never search for a document again.
+             </p>
+             
+             <div id="auth-message-container">
+                 <button id="google-login-button-hero" class="py-4 px-12 bg-teal-accent text-white font-extrabold text-xl rounded-full shadow-2xl shadow-teal-300/50 hover:bg-teal-dark transition duration-300 flex items-center justify-center mx-auto space-x-3 cta-pulse transform hover:scale-[1.02]">
+                     <i data-lucide="log-in" class="w-6 h-6"></i>
+                     <span>Start Organizing Now</span>
+                 </button>
+             </div>
+        </section>
+        
+        <section id="how-it-works" class="py-20 w-full bg-slate-50 border-t border-b border-gray-200 relative z-10">
+            <div class="container mx-auto px-6 max-w-6xl">
+                <h2 class="text-4xl font-extrabold text-gray-900 mb-4 text-center">The 3-Step Smart Pipeline 🚀</h2>
+                <p class="text-lg text-gray-600 mb-12 text-center max-w-3xl mx-auto">
+                    Every file passes through a multi-tiered system to ensure precision and compliance with your personal organizational logic.
+                </p>
+
+                <div class="flex flex-col md:flex-row justify-center items-center gap-10 md:gap-20 text-center">
+                    
+                    <div class="pipeline-step w-full md:w-1/3 p-6 rounded-2xl border-2 border-primary-blue shadow-xl bg-white feature-card hover:shadow-2xl">
+                        <div class="w-12 h-12 rounded-full bg-primary-blue mx-auto mb-4 flex items-center justify-center text-white font-bold text-xl shadow-lg">1</div>
+                        <h3 class="font-bold text-xl mb-2 text-gray-900">Manual Rules Check</h3>
+                        <p class="text-sm text-gray-600">Priority matching against your **personal rules** (e.g., file name contains "tax", file type is `.pdf`). If matched, the process is finalized.</p>
+                        <div class="pipeline-connector-right hidden md:block"></div>
+                    </div>
+
+                    
+                    <div class="pipeline-step w-full md:w-1/3 p-6 rounded-2xl border-2 border-gray-200 shadow-md bg-white feature-card">
+                        <div class="w-12 h-12 rounded-full bg-yellow-500 mx-auto mb-4 flex items-center justify-center text-white font-bold text-xl shadow-lg">2</div>
+                        <h3 class="font-bold text-xl mb-2 text-gray-900">Metadata & Type Analysis</h3>
+                        <p class="text-sm text-gray-600">Extraction of **technical data** like image EXIF tags (date, GPS) or archive file types (`.zip`, `.tar`) to structure basic folders like YEAR/MONTH.</p>
+                        <div class="pipeline-connector-right hidden md:block"></div>
+                    </div>
+
+                    <div class="pipeline-step w-full md:w-1/3 p-6 rounded-2xl border-2 border-gray-200 shadow-md bg-white feature-card">
+                        <div class="w-12 h-12 rounded-full bg-green-500 mx-auto mb-4 flex items-center justify-center text-white font-bold text-xl shadow-lg">3</div>
+                        <h3 class="font-bold text-xl mb-2 text-gray-900">Gemini AI Deep Dive</h3>
+                        <p class="text-sm text-gray-600">The **Gemini AI** analyzes the content's context and semantics for unknown files, providing smart category placement and renaming suggestions.</p>
+                    </div>
+                    
+                </div>
+            </div>
+        </section>
+        
+        <section class="py-20 w-full bg-white relative z-10">
+            <div class="container mx-auto px-6 max-w-6xl">
+                <h2 class="text-4xl font-extrabold text-gray-900 mb-4 text-center">Trusted by Professionals</h2>
+                <p class="text-lg text-gray-600 mb-12 text-center max-w-3xl mx-auto">
+                    See how Organize.AI has transformed the productivity of busy individuals and small teams.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    
+                    <div class="testimonial-card p-6 border-l-4 border-yellow-500">
+                        <i data-lucide="quote" class="w-8 h-8 mb-4 text-yellow-500"></i>
+                        <p class="text-gray-700 italic mb-4">"I used to spend hours managing photos and invoices. Now, it's done instantly. The custom rules engine is a game-changer for my business finance records."</p>
+                        <div class="flex items-center">
+                            <img class="w-10 h-10 rounded-full mr-4" src="https://i.pravatar.cc/150?img=1" alt="Avatar">
+                            <div>
+                                <p class="font-bold text-primary-blue">Sarah L.</p>
+                                <p class="text-sm text-gray-500">Freelance Accountant</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="testimonial-card p-6 border-l-4 border-teal-accent">
+                        <i data-lucide="quote" class="w-8 h-8 mb-4 text-teal-accent"></i>
+                        <p class="text-gray-700 italic mb-4">"My downloads folder went from chaos to organized sub-directories overnight. The AI's ability to categorize obscure work documents is shockingly accurate."</p>
+                        <div class="flex items-center">
+                            <img class="w-10 h-10 rounded-full mr-4" src="https://i.pravatar.cc/150?img=68" alt="Avatar">
+                            <div>
+                                <p class="font-bold text-primary-blue">Michael A.</p>
+                                <p class="text-sm text-gray-500">Software Developer</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="testimonial-card p-6 border-l-4 border-blue-500">
+                        <i data-lucide="quote" class="w-8 h-8 mb-4 text-blue-500"></i>
+                        <p class="text-gray-700 italic mb-4">"The constant log polling gives me confidence. I see exactly how and why every single file is moved. Transparent automation is exactly what I needed."</p>
+                        <div class="flex items-center">
+                            <img class="w-10 h-10 rounded-full mr-4" src="https://i.pravatar.cc/150?img=33" alt="Avatar">
+                            <div>
+                                <p class="font-bold text-primary-blue">Dr. Elena K.</p>
+                                <p class="text-sm text-gray-500">Academic Researcher</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="py-20 container mx-auto px-6 max-w-6xl relative z-10 bg-slate-50/50">
+            <h2 class="text-4xl font-extrabold text-gray-900 mb-12 text-center">Core Features & Professional Use Cases</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 text-left">
+                
+                <div class="feature-card p-6 bg-white rounded-xl shadow-xl border-t-4 border-teal-accent">
+                    <i data-lucide="file-text" class="w-8 h-8 mb-3 text-teal-accent"></i>
+                    <h3 class="font-bold text-xl mb-1 text-gray-900">Contextual Routing</h3>
+                    <p class="text-sm text-gray-600">Automatically routes documents by deep reading content: separating 'Legal Contracts' from 'Project Briefs' into designated folders.</p>
+                </div>
+                
+                <div class="feature-card p-6 bg-white rounded-xl shadow-xl border-t-4 border-green-600">
+                    <i data-lucide="code" class="w-8 h-8 mb-3 text-green-600"></i>
+                    <h3 class="font-bold text-xl mb-1 text-gray-900">Source Code Structuring</h3>
+                    <p class="text-sm text-gray-600">Instantly identifies programming languages (Python, JS, Java) and creates clean, versioned sub-folders for development projects.</p>
+                </div>
+
+                <div class="feature-card p-6 bg-white rounded-xl shadow-xl border-t-4 border-yellow-600">
+                    <i data-lucide="dollar-sign" class="w-8 h-8 mb-3 text-yellow-600"></i>
+                    <h3 class="font-bold text-xl mb-1 text-gray-900">Automated Archiving</h3>
+                    <p class="text-sm text-gray-600">Extracts dates and amounts from invoices/receipts, sorting them by **Fiscal Quarter** or **Vendor Name** for easy tax prep.</p>
+                </div>
+                
+                <div class="feature-card p-6 bg-white rounded-xl shadow-xl border-t-4 border-blue-500">
+                    <i data-lucide="image" class="w-8 h-8 mb-3 text-blue-500"></i>
+                    <h3 class="font-bold text-xl mb-1 text-gray-900">Chronological Indexing</h3>
+                    <p class="text-sm text-gray-600">Leverages **EXIF metadata** to accurately date, group, and rename large photo/video collections by event and location.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section class="w-full py-16 bg-primary-blue relative z-10 shadow-inner">
+            <div class="container mx-auto px-6 text-center max-w-4xl">
+                <h2 class="text-4xl font-extrabold text-white mb-4">Ready to End File Chaos?</h2>
+                <p class="text-xl text-teal-100 mb-8">Join thousands of users who trust Organize.AI to keep their digital world flawlessly sorted.</p>
+                <button id="google-login-button-final-cta" class="py-4 px-12 bg-white text-primary-blue font-extrabold text-xl rounded-full shadow-2xl hover:bg-gray-100 transition duration-300 flex items-center justify-center mx-auto space-x-3 transform hover:scale-105">
+                    <i data-lucide="rocket" class="w-6 h-6"></i>
+                    <span>Activate Your Free Account</span>
+                </button>
+            </div>
+        </section>
+
+   <footer class="bg-gray-900 text-white py-8 mt-auto border-t border-gray-700 z-10 w-full ">
+        <div class="container mx-auto px-6 text-center text-sm">
+            <p class="text-gray-400">&copy; 2025 Organize.AI: The Future of File Management. All rights reserved.</p>
+            <p class="text-xs mt-2 text-gray-500">Powered by Gemini AI Technology. <a href="#" class="text-teal-accent hover:text-white">Privacy Policy</a> | <a href="#" class="text-teal-accent hover:text-white">Terms of Service</a></p>
+        </div>
+    </footer>
+    </div>
+    
+ 
+
+    <div id="dashboard-view" class="hidden container mx-auto p-4 md:p-10 flex-grow relative z-10">
+        <header class="flex flex-wrap justify-between items-center pb-6 mb-8 border-b-4 border-teal-accent/20">
+            <h1 class="text-3xl font-bold text-primary-blue flex items-center mb-2 md:mb-0">
+                <i data-lucide="layout-dashboard" class="w-7 h-7 mr-3 text-teal-accent"></i>
+                Service Management Portal
+            </h1>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-8">
+
+                <div class="bg-white p-6 rounded-xl shadow-2xl border-t-4 border-primary-blue">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
+                        <i data-lucide="file-up" class="w-5 h-5 mr-2 text-primary-blue"></i>
+                        Initiate Organization
+                    </h2>
+                    
+                    <div id="drop-zone" class="border-2 border-dashed border-primary-blue/50 rounded-xl p-10 text-center cursor-pointer hover:border-teal-accent hover:bg-teal-50 transition duration-200">
+                        <i data-lucide="cloud-upload" class="w-12 h-12 mx-auto text-teal-accent mb-2"></i>
+                        <p class="mt-2 text-sm text-gray-700 font-medium">Drag & Drop file(s) here</p>
+                        <p class="text-xs text-gray-500">or click to browse. Max 10 files per batch.</p>
+                        <p id="status-message" class="text-xs mt-3 font-medium h-4"></p>
+                    </div>
+
+                    <input type="file" id="file-input" class="hidden" multiple>
+
+                    <button id="upload-button" class="w-full mt-6 py-3 bg-primary-blue text-white font-extrabold text-lg rounded-xl shadow-lg hover:bg-teal-dark transition duration-300" disabled>
+                        <i data-lucide="zap" class="w-5 h-5 inline mr-2"></i> Process and Organize
+                    </button>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-2xl border-t-4 border-green-500">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
+                        <i data-lucide="settings" class="w-5 h-5 mr-2 text-green-500"></i>
+                        Define Custom Rule
+                    </h2>
+                    <form id="rule-form" class="space-y-4">
+                        <input type="text" id="rule-name" placeholder="Rule Name (e.g., 'Q4 Invoices')" required
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-sm shadow-sm">
+                        <input type="text" id="rule-condition" placeholder='Condition (e.g., name contains "invoice" or type is "pdf")' required
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-sm shadow-sm">
+                        <input type="text" id="rule-category" placeholder="Target Category (e.g., FINANCE)" required
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-sm shadow-sm">
+                        <input type="text" id="rule-subfolder" placeholder="Target SubFolder (Optional, e.g., '2025_Taxes')"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-sm shadow-sm">
+                        <button type="submit" class="w-full py-3 px-4 rounded-xl shadow-md text-sm font-bold text-white bg-green-600 hover:bg-green-700 transition duration-150 ease-in-out">
+                            <i data-lucide="save" class="w-4 h-4 inline mr-2"></i> Save Rule Permanently
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-8">
+                <div class="bg-white p-6 rounded-xl shadow-2xl border-t-4 border-blue-500">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i data-lucide="list-checks" class="w-5 h-5 mr-2 text-blue-500"></i>
+                        Active Manual Rules (Priority 1)
+                    </h2>
+                    <div id="active-rules" class="text-sm space-y-3 max-h-48 overflow-y-auto pr-2">
+                        <p class="text-gray-500">Loading rules...</p>
+                    </div>
+                </div>
+
+                <div class="bg-gray-900 p-6 rounded-xl shadow-2xl border-t-4 border-red-500">
+                    <h2 class="text-xl font-bold text-gray-100 mb-4 flex items-center justify-between">
+                        <span class="flex items-center text-red-400">
+                            <i data-lucide="terminal" class="w-5 h-5 mr-2"></i>
+                            Live Processing Log
+                        </span>
+                        <span id="log-status" class="text-xs font-mono text-gray-500">Polling...</span>
+                    </h2>
+                    <pre id="processing-log" class="log-viewer bg-gray-800 text-green-300 p-4 rounded-lg text-xs overflow-auto max-h-96 min-h-64 border border-gray-700 font-mono">Log is currently empty. Upload a file to see activity.</pre>
+                </div>
+            </div>
+        </div>
+          <footer class="bg-gray-900 text-white py-8 mt-auto border-t border-gray-700 z-10 w-full">
+        <div class="container mx-auto px-6 text-center text-sm">
+            <p class="text-gray-400">&copy; 2025 Organize.AI: The Future of File Management. All rights reserved.</p>
+            <p class="text-xs mt-2 text-gray-500">Powered by Gemini AI Technology. <a href="#" class="text-teal-accent hover:text-white">Privacy Policy</a> | <a href="#" class="text-teal-accent hover:text-white">Terms of Service</a></p>
+        </div>
+    </footer>
+    </div>
+ 
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:8000';
+        // Initialize variables by checking local storage
+        let accessToken = localStorage.getItem('access_token');
+        let currentUserEmail = localStorage.getItem('user_email');
+        let currentUserName = localStorage.getItem('user_name'); 
+        let logInterval = null;
+        let filesToUpload = []; 
+
+        // --- Utility Functions ---
+
+        function setAuthMessage(text, isError = false) {
+            // Update the message in the Hero section
+            const el = document.getElementById('auth-message');
+            el.textContent = text;
+            // Update classes to use Teal theme consistency
+            el.classList.remove('text-red-500', 'text-gray-500', 'text-green-500', 'bg-teal-50', 'bg-red-50', 'text-primary-blue', 'text-indigo-700', 'shadow-inner');
+            el.classList.add(isError ? 'text-red-600 bg-red-100 shadow-lg' : 'text-primary-blue bg-teal-50 shadow-inner');
+        }
+
+        function showDashboard() {
+            // Get navigation elements
+            const userDisplayNav = document.getElementById('user-display-nav');
+            const authNavLink = document.getElementById('auth-nav-link');
+            const userInfoNav = document.getElementById('user-info-nav');
+            
+            // 🚨 Nav Bar Update: Show name, Hide Sign In
+            const welcomeText = currentUserName ? `Welcome, ${currentUserName.split(' ')[0]}!` : `User: ${currentUserEmail}`;
+            userDisplayNav.textContent = welcomeText;
+            userDisplayNav.title = `Signed in as ${currentUserEmail}`; 
+
+            authNavLink.classList.add('hidden');
+            userInfoNav.classList.remove('hidden');
+
+            // 🚨 View Update: Hide Homepage, Show Dashboard
+            document.getElementById('auth-container').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons(); 
+            }
+            fetchRules();
+            startLogPolling();
+        }
+
+        function showLanding(initialMessage = "Sign in using Google to access the organizer service.") {
+            // Get navigation elements
+            const authNavLink = document.getElementById('auth-nav-link');
+            const userInfoNav = document.getElementById('user-info-nav');
+
+            // Stop log polling and clear in-memory tokens immediately
+            clearInterval(logInterval);
+            accessToken = null;
+            currentUserEmail = null;
+            currentUserName = null;
+            
+            // Clear local storage to prevent perpetual login
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_email');
+            localStorage.removeItem('user_name'); 
+
+            // 🚨 Nav Bar Update: Show Sign In, Hide Name
+            authNavLink.classList.remove('hidden');
+            userInfoNav.classList.add('hidden');
+
+            // 🚨 View Update: Show Homepage, Hide Dashboard
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('auth-container').classList.remove('hidden');
+            
+            setAuthMessage(initialMessage);
+        }
+        
+        // --- Core Authentication Flow ---
+
+        function handleAuthRedirect() {
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            
+            const token = params.get('access_token');
+            const tokenType = params.get('token_type');
+            const error = params.get('auth_error');
+            const name = params.get('user_name'); 
+
+            if (error) {
+                history.replaceState(null, document.title, window.location.pathname + window.location.search);
+                setAuthMessage("Authentication Failed. Please check server logs and configuration.", true);
+                return true;
+            }
+            
+            if (token && tokenType === 'Bearer') {
+                accessToken = token;
+                currentUserEmail = token; 
+                currentUserName = name ? decodeURIComponent(name) : token; 
+
+                // Store credentials
+                localStorage.setItem('access_token', accessToken);
+                localStorage.setItem('user_email', currentUserEmail);
+                localStorage.setItem('user_name', currentUserName); 
+
+                
+                history.replaceState(null, document.title, window.location.pathname + window.location.search);
+                
+                showDashboard();
+                return true;
+            }
+            return false;
+        }
+
+        // --- Initialization ---
+        window.addEventListener('load', () => {
+             if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
+            // 🚨 Event delegation for ALL Sign In buttons
+            document.getElementById('google-login-button-nav').addEventListener('click', initiateGoogleLogin);
+            document.getElementById('google-login-button-hero').addEventListener('click', initiateGoogleLogin);
+            document.getElementById('google-login-button-final-cta').addEventListener('click', initiateGoogleLogin);
+            document.getElementById('logout-button-nav').addEventListener('click', () => showLanding("You have been logged out."));
+
+
+            if (handleAuthRedirect()) {
+                return;
+            }
+
+            // Check in-memory state
+            if (accessToken && currentUserEmail) {
+                showDashboard();
+            } else {
+                showLanding(); 
+            }
+        });
+
+        function initiateGoogleLogin(e) {
+            e.preventDefault();
+            window.location.href = `${API_BASE_URL}/auth/google/login`;
+        }
+
+        // --- File Upload Logic (Full version remains below) ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadButton = document.getElementById('upload-button');
+        const uploadStatus = document.getElementById('status-message');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('bg-indigo-50'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('bg-indigo-50'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        uploadButton.addEventListener('click', uploadFiles);
+
+        function handleDrop(e) {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            handleFiles(files);
+        }
+
+        async function handleFiles(files) {
+            filesToUpload = Array.from(files);
+            if (filesToUpload.length > 0) {
+                uploadStatus.textContent = `${filesToUpload.length} file(s) selected, ready to upload.`;
+                uploadButton.disabled = false;
+                dropZone.classList.add('border-primary-blue', 'bg-blue-50');
+            } else {
+                uploadStatus.textContent = '';
+                uploadButton.disabled = true;
+                dropZone.classList.remove('border-primary-blue', 'bg-blue-50');
+            }
+            uploadStatus.classList.remove('text-green-600', 'text-red-500');
+            uploadStatus.classList.add('text-indigo-600');
+            fileInput.value = ''; 
+        }
+
+        async function uploadFiles() {
+            if (filesToUpload.length === 0) return;
+
+            uploadButton.disabled = true;
+            let successCount = 0;
+            let totalCount = filesToUpload.length;
+            
+            for (let i = 0; i < filesToUpload.length; i++) {
+                const file = filesToUpload[i];
+                uploadStatus.textContent = `Processing file ${i + 1} of ${totalCount}: ${file.name}...`;
+
+                if (!accessToken) {
+                    uploadStatus.textContent = "Error: Not authenticated. Please log in.";
+                    showLanding("Session expired. Please sign in again.");
+                    uploadButton.disabled = false;
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/organize/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}` 
+                        },
+                        body: formData
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.status === 202) {
+                        successCount++;
+                        console.log(`[Success] ${file.name} queued: `, result.message);
+                    } else if (response.status === 401) {
+                        showLanding("Session expired. Please sign in again.");
+                        uploadButton.disabled = false;
+                        return;
+                    } else {
+                        console.error(`[Error] ${file.name} failed to queue: `, result.detail || response.statusText);
+                    }
+                } catch (error) {
+                    console.error('Network Error:', error);
+                }
+            }
+
+            filesToUpload = [];
+            uploadButton.disabled = false;
+            dropZone.classList.remove('border-primary-blue', 'bg-blue-50');
+
+            if (successCount === totalCount) {
+                 uploadStatus.textContent = `✅ All ${totalCount} files queued successfully.`;
+                 uploadStatus.classList.add('text-green-600');
+            } else if (successCount > 0) {
+                 uploadStatus.textContent = `⚠️ ${successCount}/${totalCount} files queued. Check logs for errors.`;
+                 uploadStatus.classList.add('text-log-orange');
+            } else {
+                 uploadStatus.textContent = `❌ All file uploads failed. Check network/server.`;
+                 uploadStatus.classList.add('text-red-500');
+            }
+            
+            startLogPolling();
+        }
+
+
+        // --- Log Polling (Full version remains below) ---
+        const processingLog = document.getElementById('processing-log');
+        const logStatus = document.getElementById('log-status');
+        
+        function startLogPolling() {
+            if (logInterval) clearInterval(logInterval);
+            
+            const fetchLog = async () => {
+                if (!accessToken) return clearInterval(logInterval); 
+
+                try {
+                    logStatus.textContent = 'Polling...';
+                    const response = await fetch(`${API_BASE_URL}/logs`, {
+                        headers: { 'Authorization': `Bearer ${accessToken}` } 
+                    });
+                    
+                    if (response.status === 401) {
+                        showLanding("Session expired. Please sign in again.");
+                        return;
+                    }
+
+                    if (!response.ok) throw new Error('Failed to fetch logs');
+                    const data = await response.json();
+                    
+                    // Log coloring for better readability
+                    let logContent = data.log;
+                    logContent = logContent.replace(/\[SUCCESSFULLY MOVED\]/g, '<span class="text-log-green font-bold">[SUCCESSFULLY MOVED]</span>');
+                    logContent = logContent.replace(/\[API-UPLOAD\]/g, '<span class="text-primary-blue font-bold">[API-UPLOAD]</span>');
+                    logContent = logContent.replace(/\[WARNING\]|\[DUPLICATE SKIPPED\]|\[COLLISION RESOLVED\]/g, '<span class="text-log-orange font-bold">$&</span>');
+                    logContent = logContent.replace(/ERROR/g, '<span class="text-red-500 font-bold">$&</span>');
+                    logContent = logContent.replace(/=/g, '<span class="text-gray-600 font-bold">=</span>');
+                    
+                    processingLog.innerHTML = logContent || '<p class="text-gray-500">Log is currently empty. Upload a file to see activity.</p>';
+                    processingLog.scrollTop = processingLog.scrollHeight;
+                    logStatus.textContent = `Last update: ${new Date().toLocaleTimeString()}`;
+                    logStatus.classList.remove('text-gray-500', 'text-red-500', 'text-green-500');
+                    logStatus.classList.add('text-teal-accent'); // Use accent color for live status
+
+                } catch (error) {
+                    logStatus.textContent = 'Log polling failed! Check backend.';
+                    logStatus.classList.remove('text-gray-500', 'text-green-500', 'text-teal-accent');
+                    logStatus.classList.add('text-red-500');
+                }
+            };
+            
+            fetchLog();
+            logInterval = setInterval(fetchLog, 5000); 
+        }
+
+        // --- Rules Management Logic (Full version remains below) ---
+        const ruleForm = document.getElementById('rule-form');
+        const activeRulesDiv = document.getElementById('active-rules');
+
+        async function fetchRules() {
+            activeRulesDiv.innerHTML = '<p class="text-gray-500">Loading rules...</p>';
+            if (!accessToken) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/config/rules`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                
+                if (response.status === 401) {
+                    showLanding("Session expired. Please sign in again.");
+                    return;
+                }
+                
+                const rules = await response.json();
+                renderRules(rules);
+            } catch (error) {
+                activeRulesDiv.innerHTML = '<p class="text-red-500 font-medium">Error loading rules. Check backend rules endpoint.</p>';
+            }
+        }
+
+        function renderRules(rules) {
+            if (rules.length === 0) {
+                activeRulesDiv.innerHTML = '<p class="text-gray-500">No active rules defined. Files will be classified by AI.</p>';
+                return;
+            }
+
+            activeRulesDiv.innerHTML = rules.map((rule, index) => `
+                <div class="p-3 border-l-4 border-blue-500 rounded-md bg-gray-50 shadow-sm transition duration-150 hover:bg-blue-50">
+                    <p class="font-bold text-gray-800 text-sm">#${index + 1}: ${rule.name}</p>
+                    <p class="text-xs text-gray-600 mt-1">
+                        <span class="font-mono bg-yellow-100 px-1 rounded text-yellow-800">IF: ${rule.condition}</span>
+                        <i data-lucide="chevrons-right" class="w-3 h-3 inline-block mx-1 text-green-700"></i>
+                        <span class="font-semibold text-primary-blue">${rule.target_category}/${rule.target_subfolder || 'General'}</span>
+                    </p>
+                </div>
+            `).join('');
+            lucide.createIcons(); 
+        }
+        
+        ruleForm.addEventListener('submit', handleRuleForm);
+
+        async function handleRuleForm(e) {
+            e.preventDefault();
+            if (!accessToken) {
+                uploadStatus.textContent = "Error: Not authenticated. Please log in.";
+                return;
+            }
+            
+            const newRule = {
+                name: document.getElementById('rule-name').value,
+                condition: document.getElementById('rule-condition').value,
+                target_category: document.getElementById('rule-category').value.toUpperCase(),
+                target_subfolder: document.getElementById('rule-subfolder').value || null
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/config/rules`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify(newRule)
+                });
+
+                if (response.status === 401) {
+                    showLanding("Session expired. Please sign in again.");
+                    return;
+                }
+
+                if (response.ok) {
+                    uploadStatus.textContent = `Rule '${newRule.name}' saved successfully!`;
+                    uploadStatus.classList.remove('text-indigo-600', 'text-red-500', 'text-log-orange');
+                    uploadStatus.classList.add('text-green-600');
+                    ruleForm.reset();
+                    fetchRules(); 
+                } else {
+                    const error = await response.json();
+                    uploadStatus.textContent = `Failed to save rule: ${error.detail || 'Server Error'}`;
+                    uploadStatus.classList.remove('text-indigo-600', 'text-green-600', 'text-log-orange');
+                    uploadStatus.classList.add('text-red-500');
+                }
+            } catch (error) {
+                uploadStatus.textContent = 'Network error: Could not connect to the backend service.';
+                uploadStatus.classList.remove('text-indigo-600', 'text-green-600', 'text-log-orange');
+                uploadStatus.classList.add('text-red-500');
+            }
+        }
+    </script>
+</body>
+</html>
